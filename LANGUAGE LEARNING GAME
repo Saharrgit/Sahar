@@ -1,0 +1,489 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
+import java.util.List;
+
+class LanguageLearningGame extends JFrame {
+    private JComboBox<String> languageSelector;
+    private JComboBox<String> levelSelector;
+    private JButton startButton;
+    private JPanel cardPanel;
+    private CardLayout cardLayout;
+
+    public LanguageLearningGame() {
+        setTitle("Language Learning Game");
+        setSize(600, 500);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+        setLookAndFeel();
+        JPanel menuPanel = createMainMenu();
+        cardLayout = new CardLayout();
+        cardPanel = new JPanel(cardLayout);
+        cardPanel.add(menuPanel, "Main Menu");
+        cardPanel.add(new JLabel("Game in Progress..."), "Game");
+        add(cardPanel, BorderLayout.CENTER);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    private void setLookAndFeel() {
+        try {
+            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            UIManager.put("control", new Color(240, 240, 240));
+            UIManager.put("text", Color.BLACK);
+            UIManager.put("nimbusLightBackground", Color.WHITE);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private JPanel createMainMenu() {
+        JPanel menuPanel = new JPanel();
+        menuPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        String[] languages = {"Spanish", "French", "German", "Italian", "Japanese"};
+        languageSelector = new JComboBox<>(languages);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        menuPanel.add(new JLabel("Select Language:"), gbc);
+        gbc.gridx = 1;
+        menuPanel.add(languageSelector, gbc);
+        String[] levels = {"Beginner", "Advanced"};
+        levelSelector = new JComboBox<>(levels);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        menuPanel.add(new JLabel("Select Level:"), gbc);
+        gbc.gridx = 1;
+        menuPanel.add(levelSelector, gbc);
+        startButton = new JButton("Start Game");
+        startButton.setFont(new Font("Arial", Font.BOLD, 16));
+        startButton.setBackground(new Color(0, 153, 255));
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.gridwidth = 2;
+        menuPanel.add(startButton, gbc);
+        startButton.addActionListener(e -> startGame());
+        return menuPanel;
+    }
+
+    private void startGame() {
+        String language = (String) languageSelector.getSelectedItem();
+        String level = (String) levelSelector.getSelectedItem();
+        GameSession gameSession = new GameSession(language, level);
+        cardPanel.add(gameSession, "Game");
+        cardLayout.show(cardPanel, "Game");
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(LanguageLearningGame::new);
+    }
+}
+
+class GameSession extends JPanel {
+    private String language;
+    private String level;
+    private int score;
+    private int roundsPlayed;
+    private static final int MAX_ROUNDS = 5;
+
+    private Set<String> usedWords;
+
+    public GameSession(String language, String level) {
+        this.language = language;
+        this.level = level;
+        this.score = 0;
+        this.roundsPlayed = 0;
+        this.usedWords = new HashSet<>();
+        setLayout(new BorderLayout());
+
+        // Game Header
+        JPanel header = new JPanel(new GridLayout(1, 2));
+        JLabel titleLabel = new JLabel("Game Session - " + language + " (" + level + ")");
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        header.add(titleLabel);
+        add(header, BorderLayout.NORTH);
+
+        // Game Buttons
+        JPanel buttonPanel = new JPanel(new GridLayout(6, 1, 10, 10));
+        JButton hangmanButton = createGameButton("Play Hangman");
+        JButton typingButton = createGameButton("Typing Practice");
+        JButton scrambleButton = createGameButton("Word Scramble");
+        JButton mathButton = createGameButton("Language Math Game");
+        JButton vocabButton = createGameButton("Vocabulary Quiz");
+        JButton nextRoundButton = createGameButton("Next Round");
+        buttonPanel.add(hangmanButton);
+        buttonPanel.add(typingButton);
+        buttonPanel.add(scrambleButton);
+        buttonPanel.add(mathButton);
+        buttonPanel.add(vocabButton);
+        buttonPanel.add(nextRoundButton);
+        hangmanButton.addActionListener(e -> playHangman());
+        typingButton.addActionListener(e -> playTypingPractice());
+        scrambleButton.addActionListener(e -> playWordScramble());
+        mathButton.addActionListener(e -> playLanguageMathGame());
+        vocabButton.addActionListener(e -> playVocabularyQuiz());
+        nextRoundButton.addActionListener(e -> nextRound());
+        add(buttonPanel, BorderLayout.CENTER);
+    }
+
+    private JButton createGameButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font("Arial", Font.BOLD, 16));
+        button.setBackground(new Color(0, 204, 255));
+        button.setFocusPainted(false);
+        return button;
+    }
+
+    private void nextRound() {
+        roundsPlayed++;
+        if (roundsPlayed >= MAX_ROUNDS) {
+            showFinalScore();
+        } else {
+            JOptionPane.showMessageDialog(this, "Round " + (roundsPlayed + 1) + " complete! You have " + (MAX_ROUNDS - roundsPlayed) + " rounds left.");
+        }
+    }
+
+    private void showFinalScore() {
+        String rank = calculateRank(score);
+        int response = JOptionPane.showConfirmDialog(this, "Your score: " + score + "\nYour rank: " + rank +
+                        "\nDo you want to play again or move to Advanced Level?",
+                "Game Over", JOptionPane.YES_NO_CANCEL_OPTION);
+
+        if (response == JOptionPane.YES_OPTION) {
+            score = 0;
+            roundsPlayed = 0;
+            new GameSession(language, level).setVisible(true);
+        } else {
+            JOptionPane.showMessageDialog(this, "Thank you for playing!");
+            System.exit(0); // Exit game
+        }
+    }
+
+    private String calculateRank(int score) {
+        if (score >= 15) return "Expert";
+        else if (score >= 10) return "Intermediate";
+        else if (score >= 5) return "Beginner";
+        else return "Novice";
+    }
+
+    // Hangman Game
+    private void playHangman() {
+        String[] words = getHangmanWords();
+        String word = getUniqueWord(words);
+        String hint = getHintForWord(word);
+        Set<Character> guessedLetters = new HashSet<>();
+        int remainingAttempts = 6;
+        StringBuilder displayWord = new StringBuilder("_".repeat(word.length()));
+
+        while (remainingAttempts > 0) {
+            String guessedWord = displayWord.toString();
+            String guessedLettersString = guessedLetters.isEmpty() ? "None" : guessedLetters.toString();
+            String stickman = getStickman(6 - remainingAttempts);
+            String guessPrompt = "Hint: " + hint + "\n" + stickman + "\nGuessed Letters: " + guessedLettersString + "\n" + guessedWord;
+            String letterGuess = JOptionPane.showInputDialog(this, "Guess a letter:\n" + guessPrompt);
+            if (letterGuess == null || letterGuess.length() != 1) {
+                continue;
+            }
+
+            char guess = letterGuess.charAt(0);
+            if (guessedLetters.contains(guess)) {
+                JOptionPane.showMessageDialog(this, "You already guessed that letter!");
+                continue;
+            }
+
+            guessedLetters.add(guess);
+            if (word.indexOf(guess) >= 0) {
+                for (int i = 0; i < word.length(); i++) {
+                    if (word.charAt(i) == guess) {
+                        displayWord.setCharAt(i, guess);
+                    }
+                }
+                if (displayWord.toString().equals(word)) {
+                    score += 10;
+                    JOptionPane.showMessageDialog(this, "You guessed the word: " + word);
+                    break;
+                }
+            } else {
+                remainingAttempts--;
+                JOptionPane.showMessageDialog(this, "Wrong guess! Remaining attempts: " + remainingAttempts);
+            }
+        }
+        if (remainingAttempts == 0) {
+            JOptionPane.showMessageDialog(this, "Game over! The correct word was: " + word);
+        }
+        nextRound();
+    }
+
+    private String getHintForWord(String word) {
+        switch (language) {
+            case "Spanish":
+                if (word.equals("gato")) return "A small furry animal that says meow.";
+                if (word.equals("perro")) return "A furry animal that says woof.";
+                if (word.equals("flor")) return "A colorful plant.";
+                break;
+            case "French":
+                if (word.equals("chat")) return "A small furry animal that says miaou.";
+                if (word.equals("chien")) return "A furry animal that says ouaf.";
+                if (word.equals("soleil")) return "The sun.";
+                break;
+            case "German":
+                if (word.equals("hund")) return "A furry animal that says wau.";
+                if (word.equals("katze")) return "A small furry animal that says miau.";
+                if (word.equals("baum")) return "A tall, green plant.";
+                break;
+            case "Italian":
+                if (word.equals("gatto")) return "A small furry animal that says miao.";
+                if (word.equals("cane")) return "A furry animal that says bau.";
+                if (word.equals("sole")) return "The sun.";
+                break;
+            case "Japanese":
+                if (word.equals("ねこ")) return "A small furry animal that says nya.";
+                if (word.equals("いぬ")) return "A furry animal that says wan.";
+                if (word.equals("さくら")) return "A beautiful flower in spring.";
+                break;
+        }
+        return "A common word.";
+    }
+
+    private String[] getHangmanWords() {
+        switch (language) {
+            case "Spanish":
+                return level.equals("Beginner") ? new String[]{"gato", "perro", "flor"} : new String[]{"elefante", "jirafa", "crocodilo"};
+            case "German":
+                return level.equals("Beginner") ? new String[]{"hund", "katze", "baum"} : new String[]{"flugzeug", "geschenk", "auto"};
+            case "French":
+                return level.equals("Beginner") ? new String[]{"chat", "chien", "soleil"} : new String[]{"hippopotame", "éléphant", "serpent"};
+            case "Italian":
+                return level.equals("Beginner") ? new String[]{"gatto", "cane", "sole"} : new String[]{"rinoceronte", "elefante", "crocodilo"};
+            case "Japanese":
+                return level.equals("Beginner") ? new String[]{"ねこ", "いぬ", "さくら"} : new String[]{"さる", "ぞう", "きりん"};
+            default:
+                return new String[]{"cat", "dog", "tree"};
+        }
+    }
+
+    private String getUniqueWord(String[] words) {
+        String word;
+        do {
+            word = words[new Random().nextInt(words.length)];
+        } while (usedWords.contains(word));
+        usedWords.add(word);
+        return word;
+    }
+
+    private String getStickman(int wrongGuesses) {
+        switch (wrongGuesses) {
+            case 0: return "\n  O  \n /|\\ \n / \\";
+            case 1: return "\n  O  \n /|\\ \n /  ";
+            case 2: return "\n  O  \n /|\\ ";
+            case 3: return "\n  O  \n /|  ";
+            case 4: return "\n  O  \n  |  ";
+            case 5: return "\n  O  ";
+            default: return "";
+        }
+    }
+
+    // Typing Practice
+    private void playTypingPractice() {
+        String[] words = getHangmanWords();
+        String word = getUniqueWord(words);
+        String hint = getHintForWord(word);
+        String typedWord = JOptionPane.showInputDialog(this, "Type the word:\nHint: " + hint);
+        if (typedWord != null && typedWord.equalsIgnoreCase(word)) {
+            score += 10;
+            JOptionPane.showMessageDialog(this, "Correct! +10 points.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Incorrect! The correct word was: " + word);
+        }
+        nextRound();
+    }
+
+    // Word Scramble
+    private void playWordScramble() {
+        String[] words = getHangmanWords();
+        String word = getUniqueWord(words);
+        String scrambledWord = scrambleWord(word);
+        String hint = getHintForWord(word);
+        String guess = JOptionPane.showInputDialog(this, "Unscramble the word:\n" + scrambledWord + "\nHint: " + hint);
+        if (guess != null && guess.equalsIgnoreCase(word)) {
+            score += 10;
+            JOptionPane.showMessageDialog(this, "Correct! +10 points.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Incorrect! The correct word was: " + word);
+        }
+        nextRound();
+    }
+
+    private String scrambleWord(String word) {
+        List<Character> letters = new ArrayList<>();
+        for (char c : word.toCharArray()) {
+            letters.add(c);
+        }
+        Collections.shuffle(letters);
+        StringBuilder scrambled = new StringBuilder();
+        for (char c : letters) {
+            scrambled.append(c);
+        }
+        return scrambled.toString();
+    }
+
+    // Language Math Game (Simple Addition/Multiplication in Selected Language)
+    private void playLanguageMathGame() {
+        String[] numbers = getNumbersForLanguage();  // Get number words for the selected language
+        Random rand = new Random();
+
+        // Pick random numbers for the math operation
+        String num1Word = numbers[rand.nextInt(numbers.length)];
+        String num2Word = numbers[rand.nextInt(numbers.length)];
+
+        int num1 = getNumericValue(num1Word);
+        int num2 = getNumericValue(num2Word);
+
+        // Generate a random operation (addition, subtraction, multiplication)
+        String operation = rand.nextBoolean() ? "+" : (rand.nextBoolean() ? "-" : "*");
+        int correctAnswer = 0;
+        String question = "";
+
+        switch (operation) {
+            case "+":
+                correctAnswer = num1 + num2;
+                question = num1Word + " + " + num2Word;
+                break;
+            case "-":
+                correctAnswer = num1 - num2;
+                question = num1Word + " - " + num2Word;
+                break;
+            case "*":
+                correctAnswer = num1 * num2;
+                question = num1Word + " * " + num2Word;
+                break;
+        }
+
+        String answer = JOptionPane.showInputDialog(this, "Solve the Math Problem: " + question);
+        try {
+            if (answer != null && Integer.parseInt(answer) == correctAnswer) {
+                score += 10;
+                JOptionPane.showMessageDialog(this, "Correct! +10 points.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Incorrect! The correct answer was: " + correctAnswer);
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid number!");
+        }
+        nextRound();
+    }
+
+    private int getNumericValue(String numberWord) {
+        switch (language) {
+            case "Spanish":
+                switch (numberWord) {
+                    case "uno": return 1;
+                    case "dos": return 2;
+                    case "tres": return 3;
+                    case "cuatro": return 4;
+                    case "cinco": return 5;
+                    case "seis": return 6;
+                    case "siete": return 7;
+                    case "ocho": return 8;
+                    case "nueve": return 9;
+                    case "diez": return 10;
+                    default: return 0;
+                }
+            case "French":
+                switch (numberWord) {
+                    case "un": return 1;
+                    case "deux": return 2;
+                    case "trois": return 3;
+                    case "quatre": return 4;
+                    case "cinq": return 5;
+                    case "six": return 6;
+                    case "sept": return 7;
+                    case "huit": return 8;
+                    case "neuf": return 9;
+                    case "dix": return 10;
+                    default: return 0;
+                }
+            case "German":
+                switch (numberWord) {
+                    case "eins": return 1;
+                    case "zwei": return 2;
+                    case "drei": return 3;
+                    case "vier": return 4;
+                    case "fünf": return 5;
+                    case "sechs": return 6;
+                    case "sieben": return 7;
+                    case "acht": return 8;
+                    case "neun": return 9;
+                    case "zehn": return 10;
+                    default: return 0;
+                }
+            case "Italian":
+                switch (numberWord) {
+                    case "uno": return 1;
+                    case "due": return 2;
+                    case "tre": return 3;
+                    case "quattro": return 4;
+                    case "cinque": return 5;
+                    case "sei": return 6;
+                    case "sette": return 7;
+                    case "otto": return 8;
+                    case "nove": return 9;
+                    case "dieci": return 10;
+                    default: return 0;
+                }
+            case "Japanese":
+                switch (numberWord) {
+                    case "いち": return 1;
+                    case "に": return 2;
+                    case "さん": return 3;
+                    case "し": return 4;
+                    case "ご": return 5;
+                    case "ろく": return 6;
+                    case "しち": return 7;
+                    case "はち": return 8;
+                    case "きゅう": return 9;
+                    case "じゅう": return 10;
+                    default: return 0;
+                }
+            default:
+                return 0;
+        }
+    }
+
+    private String[] getNumbersForLanguage() {
+        switch (language) {
+            case "Spanish":
+                return new String[]{"uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez"};
+            case "French":
+                return new String[]{"un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix"};
+            case "German":
+                return new String[]{"eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn"};
+            case "Italian":
+                return new String[]{"uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto", "nove", "dieci"};
+            case "Japanese":
+                return new String[]{"いち", "に", "さん", "し", "ご", "ろく", "しち", "はち", "きゅう", "じゅう"};
+            default:
+                return new String[]{"one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"};
+        }
+    
+    }
+
+    // Vocabulary Quiz
+    private void playVocabularyQuiz() {
+        String[] words = getHangmanWords();
+        String word = getUniqueWord(words);
+        String hint = getHintForWord(word);
+        String answer = JOptionPane.showInputDialog(this, "What is the meaning of: " + word + "?\nHint: " + hint);
+        if (answer != null && answer.equalsIgnoreCase(getHintForWord(word))) {
+            score += 10;
+            JOptionPane.showMessageDialog(this, "Correct! +10 points.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Incorrect! The correct meaning was: " + getHintForWord(word));
+        }
+        nextRound();
+    }
+}
+
